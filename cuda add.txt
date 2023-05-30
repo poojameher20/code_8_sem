@@ -1,0 +1,78 @@
+#include<stdio.h>
+#include<iostream.h>
+#include<cuda_runtime.h>
+#include<math.h>
+using namespace std;
+__global__ void addvectors(int *a,int *b,int *c,int n)
+{
+    int i=blockIdx.x*blockDim.x+threadIdx.x;
+    if(i<n)
+    {
+        c[i]=a[i]+b[i];
+    }
+}
+int main()
+{
+    int n=1<<4;
+    int *a,*b,*c;
+    int size=n*sizeof(int);
+
+    // Allocate memory on the host
+    cudaMallocHost(&a,size);
+    cudaMallocHost(&b,size);
+    cudaMallocHost(&c,size); //result vectors
+
+    // Initialize the vectors
+    for(int i=0;i<n;i++)
+    {
+        a[i]=rand()%1000;
+        b[i]=rand()%1000;
+        
+    }
+    // Allocate memory on the device
+    int* dev_a,* dev_b,* dev_c;
+    cudaMalloc(&dev_a,size);
+    cudaMalloc(&dev_b,size);
+    cudaMalloc(&dev_c,size);
+
+    // Copy data from host to device
+    cudaMemcpy(dev_a,a,size,cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b,b,size,cudaMemcpyHostToDevice);
+
+    // Launch the kernel...kernel will be executed by multiple threads in parallel
+    int blocksize=256;
+    int numblocks=(n+blocksize-1)/blocksize;
+
+    addvectors<<<numblocks,blocksize>>>(dev_a,dev_b,dev_c,n);
+ //You can use the <<<...>>>syntax to specify the number of blocks and threads to use.
+
+    // Copy data from device to host
+    cudaMemcpy(dev_c,c,size,cudaMemcpyDeviceToHost);
+
+    // Print the results
+    for(int i=0;i<10;i++)
+    {
+        cout<<c[i]<<" ";
+    }
+
+    cout<<endl;
+
+    // Free memory on device
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+// Free memory on host
+    cudaFreeHost(a);
+    cudaFreeHost(b);
+    cudaFreeHost(c);
+    return 0;
+}
+
+
+In this program, the `addVectors` kernel takes in the two input vectors `A` and `B`, the output vector `C`, and
+the size of the vectors `n`. The kernel uses the `blockIdx.x` and `threadIdx.x` variables to calculate the index `i`
+of the current thread. If the index is less than `n`, the kernel performs the addition operation `C[i] = A[i] +
+B[i]`.
+1. In the `main` function, the program first allocates memory for the input and output vectors on the host and
+initializes them. Then it allocates memory for the vectors on the device and copies the data from the host to the
+device using `cudaMemcpy`

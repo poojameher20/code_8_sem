@@ -1,0 +1,71 @@
+#include<stdio.h>
+#include<math.h>
+#include<cuda_runtime.h>
+#include<iostream>
+using namespace std;
+
+__global__ void addvectors(int *a,int *b,int *c,int n)
+{
+    int row=blockIdx.y*blockDim.y+threadIdx.y;
+    int col=blockIdx.x*blockDim.x+threadIdx.x;
+    if(row<n && col<n)
+    {
+        int pvalue=0;
+        for(int k=0;k<n;k++)
+        {
+            c[row*n+col]=pvalue;
+        }
+    }
+}
+
+int main()
+{
+    int n=512;
+    int *a,*b,*c;
+    int size=n*sizeof(int);
+    cudaMallocHost(&a,size);
+    cudaMallocHost(&b,size);
+    cudaMallocHost(&c,size);
+
+    for(int i=0;i<n;i++)
+    {
+        for(int j=0;j<n;j++)
+        {
+            a[i*n+j]=rand()%10;
+        }
+        b[i]=rand()%10;
+    }
+
+    int* dev_a,* dev_b,* dev_c;
+    cudaMalloc(&dev_a,size);
+    cudaMalloc(&dev_b,size);
+    cudaMalloc(&dev_c,size);
+
+    //to transfer data from the device to the host.
+    cudaMemcpy(dev_a,a,size,cudaMemcpyHostToDevice);
+    cudaMemcpy(dev_b,b,size,cudaMemcpyHostToDevice);
+
+    dim3 dimBlock(16,16);
+    dim3 dimGrid(n/dimBlock.x,n/dimBlock.y);
+
+    matmul<<<dimGrid,dimBlock>>>(dev_a,dev_b,dev_c,n); 
+ // <<<..>>> syntax to specify the number of blocks and threads  to use.
+    cudaMemcpy(dev_c,c,size,cudaMemcpyDeviceToHost); 
+    
+    for(int i=0;i<10;i++)
+    {
+        for(int j=0;j<10;j++)
+        {
+            cout<<c[i*n+j]<<" ";
+        }
+        cout<<endl;
+    }
+    cudaFree(dev_a);
+    cudaFree(dev_b);
+    cudaFree(dev_c);
+    cudaFreeHost(a);
+    cudaFreeHost(b);
+    cudaFreeHost(c);
+    return 0;
+
+}
